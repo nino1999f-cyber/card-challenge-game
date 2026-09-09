@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมสุ่มไพ่ท้าทาย</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;min-height:100vh;font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif;
+  background:radial-gradient(circle at top,#33205f 0,#171126 48%,#0b0812 100%);
+  color:#fff;display:flex;justify-content:center;overflow-x:hidden
+}
+.app{width:min(1100px,100%);padding:28px 18px 40px}
+header{text-align:center;margin-bottom:24px}
+h1{margin:0;font-size:clamp(30px,6vw,56px);letter-spacing:1px}
+.subtitle{color:#cfc4e8;margin-top:8px}
+.game{display:grid;grid-template-columns:1fr 300px;gap:22px}
+.panel{
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);
+  border-radius:24px;padding:22px;backdrop-filter:blur(10px)
+}
+.deck-area{min-height:560px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.deck{position:relative;width:230px;height:330px;margin:15px auto 25px}
+.card{
+  position:absolute;inset:0;border-radius:22px;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:28px;box-shadow:0 20px 45px rgba(0,0,0,.35);
+  backface-visibility:hidden;transition:transform .65s cubic-bezier(.2,.8,.2,1),opacity .3s;
+}
+.back{
+  background:linear-gradient(135deg,#7e45d5,#b05df1);
+  border:5px solid #eee3ff;overflow:hidden
+}
+.back:before,.back:after{content:"🎴";position:absolute;font-size:100px;opacity:.18}
+.back:before{transform:rotate(25deg);left:25px}.back:after{transform:rotate(-25deg);right:25px}
+.back span{font-size:34px;font-weight:900;z-index:1}
+.front{
+  background:linear-gradient(145deg,#fff,#eee8ff);color:#24153e;
+  transform:rotateY(180deg);font-size:24px;font-weight:800
+}
+.deck.open .back{transform:rotateY(-180deg)}
+.deck.open .front{transform:rotateY(0)}
+.deck.shuffling{animation:shuffle .55s ease-in-out}
+@keyframes shuffle{0%,100%{transform:translateX(0) rotate(0)}25%{transform:translateX(-25px) rotate(-5deg)}50%{transform:translateX(25px) rotate(5deg)}75%{transform:translateX(-12px) rotate(-3deg)}}
+button{
+  border:0;border-radius:14px;padding:13px 20px;font-size:16px;font-weight:800;cursor:pointer;
+  transition:.2s
+}
+button:hover{transform:translateY(-2px)}
+#draw{background:#a855f7;color:white;box-shadow:0 8px 25px #7c3aed55}
+#reset{background:#fff;color:#29183f}
+.buttons{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.count{margin:14px 0;color:#d8cdec;font-weight:700}
+.history{max-height:510px;overflow:auto}
+.history h2{margin-top:0;font-size:20px}
+.history-item{
+  padding:11px 12px;margin:8px 0;background:rgba(255,255,255,.06);
+  border-radius:12px;font-size:14px;color:#eee
+}
+.history-item b{color:#c084fc;margin-right:5px}
+.empty{color:#a99eb9;font-size:14px}
+.result{min-height:32px;text-align:center;color:#e9d5ff;font-weight:700}
+@media(max-width:760px){
+  .game{grid-template-columns:1fr}
+  .deck-area{min-height:500px}
+  .history{max-height:300px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>🎴 เกมสุ่มไพ่ท้าทาย</h1>
+  <div class="subtitle">สุ่มไพ่ แล้วทำภารกิจให้สำเร็จ!</div>
+</header>
+
+<div class="game">
+<section class="panel deck-area">
+  <div class="deck" id="deck">
+    <div class="card back"><span>สุ่มไพ่<br>ท้าทาย</span></div>
+    <div class="card front" id="front">พร้อมหรือยัง?</div>
+  </div>
+  <div class="result" id="result">กด “สุ่มไพ่” เพื่อเริ่มเกม</div>
+  <div class="count">ไพ่เหลือ <span id="remaining">80</span> / 80 ใบ</div>
+  <div class="buttons">
+    <button id="draw">🎲 สุ่มไพ่</button>
+    <button id="reset">🔄 เริ่มเกมใหม่</button>
+  </div>
+</section>
+
+<aside class="panel history">
+  <h2>📜 ประวัติไพ่ที่สุ่ม</h2>
+  <div id="history" class="empty">ยังไม่มีไพ่ที่สุ่ม</div>
+</aside>
+</div>
+</div>
+
+<script>
+const challenges = [
+"พูดด้วยเสียงเด็ก 1 นาที",
+"ทำหน้าตลกที่สุด 10 วินาที",
+"ร้องเพลง 1 ท่อน",
+"เต้นโดยห้ามใช้เท้า 20 วินาที",
+"พูด “จริงปะเนี่ย” 5 ครั้ง แบบ 5 อารมณ์",
+"ทำเสียงสัตว์ให้เพื่อนทาย",
+"เดินแบบนายแบบ/นางแบบ 1 รอบ",
+"ชมคนข้างซ้าย 3 อย่าง",
+"ให้เพื่อนตั้งฉายาให้ 1 ชื่อ",
+"เล่าเรื่องน่าอายแบบเบา ๆ 1 เรื่อง",
+"พูดประโยคธรรมดาให้เหมือนเล่นละคร",
+"หัวเราะปลอมให้เหมือนจริงที่สุด 15 วินาที",
+"ห้ามพูดคำว่า “ใช่” 3 นาที",
+"ตอบทุกคำถามด้วยการร้องเพลง 1 รอบ",
+"โพสท่าเหมือนถ่ายปกนิตยสาร",
+"พูด “ฉันคือคนที่เท่ที่สุด” 3 อารมณ์",
+"แต่งเรื่องจากคำ 3 คำ ภายใน 20 วินาที",
+"เลียนแบบท่าทางเพื่อน 30 วินาที",
+"พูดชื่ออาหาร 10 อย่างใน 10 วินาที",
+"ทำเสียงประกอบหนังแอ็กชันจากเหตุการณ์ธรรมดา",
+"ยิ้มค้าง 20 วินาที ห้ามหลุด",
+"พูด “ยายกินลำไย น้ำลายยายไหล” 3 รอบ",
+"เต้นตามเพลงที่เพื่อนเลือก 20 วินาที",
+"ทำท่าเดินของตัวละครในเกม",
+"คิดมุก 1 มุก แล้วทำให้คนอื่นหัวเราะ",
+"พูดด้วยเสียงผู้ประกาศข่าว 1 นาที",
+"ทำหน้าตกใจที่สุด 10 วินาที",
+"เต้นท่าที่คิดขึ้นเอง 15 วินาที",
+"พูดชื่อเพื่อน 3 คนด้วยสำเนียงต่างกัน",
+"เลียนแบบครู 1 คน โดยห้ามพูดชื่อ",
+"ทำตัวเป็นหุ่นยนต์จนถึงตาถัดไป",
+"พูดภาษาอังกฤษมั่ว ๆ 5 ประโยค",
+"ร้องเพลงโดยใช้ “ลา ลา ลา” แทนเนื้อร้อง",
+"ทำเสียงหัวเราะ 3 แบบ",
+"เดินสโลว์โมชั่น 20 วินาที",
+"ให้เพื่อนเลือกท่าโพส แล้วทำตาม",
+"พูด “ฉันไม่ได้ทำอะไรเลย” 5 อารมณ์",
+"เล่าเรื่องธรรมดาให้เหมือนข่าวใหญ่ระดับประเทศ",
+"ทำเสียงโทรศัพท์ดัง แล้วรับสายตัวเอง",
+"พูดประโยคยาก ๆ 3 รอบโดยห้ามผิด",
+"ทำท่าตัวละครในเกม 20 วินาที",
+"บอกข้อดีของตัวเอง 3 ข้อแบบมั่นใจสุด ๆ",
+"ชมคนตรงข้ามแบบเว่อร์ที่สุด 3 ประโยค",
+"ทำโฆษณาของใกล้ตัว 30 วินาที",
+"แสดงละครใบ้ให้เพื่อนทาย",
+"พูดชื่ออาหาร 15 อย่างใน 15 วินาที",
+"ทำท่าถ่ายรูปโปรไฟล์ 5 แบบ",
+"ห้ามพูดคำว่า “ไม่” จนกว่าจะถึงตาถัดไป",
+"ตอบคำถามต่อไปด้วยคำคล้องจอง",
+"ทำเสียงสัตว์ 3 ชนิดติดกัน",
+"พูดเหมือนตัวร้ายในหนัง 30 วินาที",
+"ทำท่าเหมือนเพิ่งเห็นผี แต่ห้ามส่งเสียง",
+"เต้นโดยใช้แค่แขน 20 วินาที",
+"พูดประโยคเดียวกันเหมือนคน 5 อาชีพ",
+"พากย์เสียงให้เพื่อนที่กำลังเดิน",
+"คิดชื่อหนังจากชีวิตตัวเอง 1 ชื่อ",
+"แต่งเพลงสดจากคำว่า “โรงเรียน”",
+"ทำท่าเหมือนกำลังเดินบนดวงจันทร์",
+"พูดชื่อจังหวัด 10 จังหวัดให้เร็วที่สุด",
+"ยืนโพสท่าฮีโร่ 15 วินาที",
+"เลียนแบบเพื่อน 1 คน 20 วินาที",
+"เพื่อนเลือกคำ 1 คำ และต้องพูดคำนั้นทุกประโยค",
+"เรียกทุกคนว่า “ท่าน” จนจบรอบ",
+"ทำหน้าเหมือนกำลังถ่ายรูปติดบัตร 20 วินาที",
+"พูดกับเก้าอี้เหมือนเป็นเพื่อนสนิท",
+"ขายของที่ไม่มีอยู่จริงให้เพื่อนซื้อ",
+"แนะนำตัวเองเหมือนผู้สมัครเลือกตั้ง",
+"รีวิวสถานที่ที่นั่งอยู่เหมือนอินฟลูเอนเซอร์",
+"พูด “ผม/ฉันมีความลับ” ด้วยหน้าจริงจัง 10 วินาที",
+"พูด “วันนี้อากาศดีจัง” ตามอารมณ์ที่เพื่อนกำหนด",
+"ห้ามหัวเราะ 30 วินาที ขณะเพื่อนทำหน้าตลก",
+"พูดลิ้นพันกัน 3 รอบโดยไม่ผิด",
+"แต่งเรื่องจากคำ 3 คำภายใน 20 วินาที",
+"เต้นโดยไม่มีเพลง 30 วินาที",
+"ร้องเพลงสนุกด้วยอารมณ์เศร้าที่สุด",
+"พูดประโยคธรรมดาให้เหมือนประกาศรางวัล",
+"แสดงเป็นตัวละคร 3 ตัวในฉากเดียว",
+"ทำโฆษณาตัวเองภายใน 30 วินาที",
+"เล่าเรื่อง 1 เรื่องโดยห้ามใช้คำว่า “แล้ว”",
+"ทำให้เพื่อนพูดคำว่า “อะไรนะ?” ภายใน 20 วินาที"
+];
+
+const deck = document.getElementById("deck");
+const front = document.getElementById("front");
+const draw = document.getElementById("draw");
+const reset = document.getElementById("reset");
+const remaining = document.getElementById("remaining");
+const history = document.getElementById("history");
+const result = document.getElementById("result");
+
+let remainingCards = [];
+let drawn = [];
+let busy = false;
+
+function resetGame(){
+  remainingCards = challenges.map((text,i)=>({id:i+1,text}));
+  drawn = [];
+  remaining.textContent = remainingCards.length;
+  history.innerHTML = '<div class="empty">ยังไม่มีไพ่ที่สุ่ม</div>';
+  result.textContent = 'กด “สุ่มไพ่” เพื่อเริ่มเกม';
+  front.textContent = 'พร้อมหรือยัง?';
+  deck.classList.remove("open","shuffling");
+  draw.disabled = false;
+  busy = false;
+}
+
+function drawCard(){
+  if(busy || remainingCards.length===0) return;
+  busy = true;
+  draw.disabled = true;
+  deck.classList.remove("open");
+  deck.classList.add("shuffling");
+  result.textContent = "กำลังสับไพ่...";
+
+  setTimeout(()=>{
+    const index = Math.floor(Math.random()*remainingCards.length);
+    const card = remainingCards.splice(index,1)[0];
+    drawn.push(card);
+
+    front.textContent = `${card.id}. ${card.text}`;
+    remaining.textContent = remainingCards.length;
+    result.textContent = remainingCards.length
+      ? "ไพ่ของคุณคือภารกิจนี้!"
+      : "สุ่มครบทุกใบแล้ว 🎉";
+
+    deck.classList.remove("shuffling");
+    void deck.offsetWidth;
+    deck.classList.add("open");
+
+    history.classList.remove("empty");
+    if(drawn.length===1) history.innerHTML="";
+    const item = document.createElement("div");
+    item.className="history-item";
+    item.innerHTML=`<b>#${drawn.length}</b> ไพ่ ${card.id}: ${card.text}`;
+    history.prepend(item);
+
+    busy=false;
+    if(remainingCards.length>0) draw.disabled=false;
+  },650);
+}
+
+draw.addEventListener("click",drawCard);
+reset.addEventListener("click",resetGame);
+resetGame();
+</script>
+</body>
+</html>
