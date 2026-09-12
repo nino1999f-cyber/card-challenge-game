@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมหมาป่า</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(135deg,#17112e,#30205b,#14213d);color:#fff;min-height:100vh}
+.container{width:min(100% - 28px,1050px);margin:auto;padding:25px 0 50px}.screen{display:none}.screen.active{display:block}
+h1,h2{text-align:center;margin:8px 0 18px}.sub{text-align:center;color:#d8d3ef}.panel{background:#ffffff12;border:1px solid #ffffff2b;border-radius:24px;padding:24px;backdrop-filter:blur(12px);box-shadow:0 15px 45px #0003;margin:18px 0}
+button,input,select{font:inherit}button{border:0;border-radius:14px;padding:13px 18px;font-weight:700;cursor:pointer;background:#f7c948;color:#21172f;transition:.2s}button:hover{transform:translateY(-2px);filter:brightness(1.08)}button.secondary{background:#ffffff20;color:#fff;border:1px solid #ffffff35}button.danger{background:#ef476f;color:white}button.green{background:#57cc99;color:#102b25}
+input,select{width:100%;padding:13px;border-radius:12px;border:1px solid #ffffff35;background:#17132b;color:#fff;margin:8px 0 14px}label{font-weight:700;display:block}
+.actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}.hero{text-align:center;padding:25px 0}.logo{font-size:70px}.tag{display:inline-block;background:#ffffff18;border:1px solid #ffffff30;padding:7px 13px;border-radius:999px;color:#f7c948}
+.role-grid,.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px}.role{padding:15px;border-radius:18px;text-align:center;background:linear-gradient(145deg,#ffffff18,#ffffff08);border:1px solid #ffffff25}.role b{display:block;font-size:20px;margin-top:5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:14px}.card{height:190px;border-radius:18px;background:linear-gradient(145deg,#40317b,#19152e);border:2px solid #ffffff35;display:flex;align-items:center;justify-content:center;text-align:center;padding:12px;font-weight:800;font-size:20px;cursor:pointer;position:relative;overflow:hidden}.card:before{content:"🐺";font-size:55px;position:absolute;opacity:.15}.card.selected{border-color:#f7c948;background:linear-gradient(145deg,#7653c8,#2c1e54);transform:translateY(-5px)}.card small{display:block;font-size:12px;color:#ddd;margin-top:8px}.card .front{z-index:1}
+.player{background:#ffffff12;border:1px solid #ffffff25;border-radius:16px;padding:14px}.player.dead{opacity:.45;background:#3b2030}.player strong{font-size:18px}.pill{display:inline-block;border-radius:999px;padding:4px 8px;font-size:12px;background:#ffffff20;margin:5px 0}.night{color:#bda6ff}.day{color:#ffe28a}.timer{font-size:44px;text-align:center;font-weight:900;letter-spacing:2px}.phase{text-align:center;font-weight:800;font-size:20px}.check{display:flex;gap:8px;align-items:center;margin:7px 0}.check input{width:auto;margin:0}.hidden{display:none!important}.notice{padding:12px;border-radius:12px;background:#f7c94820;border:1px solid #f7c94855;margin:12px 0}.winner{font-size:28px;text-align:center;color:#f7c948}
+@media(max-width:520px){.panel{padding:17px}.logo{font-size:55px}.card{height:155px;font-size:17px}.timer{font-size:36px}}
+</style>
+</head>
+<body>
+<div class="container">
+<section id="setup" class="screen active">
+<div class="hero"><div class="logo">🐺🌙</div><span class="tag">WEREWOLF NIGHT</span><h1>เกมหมาป่า</h1><p class="sub">สร้างเกม • สุ่มบทบาท • จัดการกลางวันและกลางคืน</p></div>
+<div class="panel">
+<h2>ตั้งค่าเกม</h2>
+<label>จำนวนผู้เล่น</label><input id="count" type="number" min="5" max="40" value="8">
+<p class="sub">แนะนำอย่างน้อย 5 คน เพื่อให้เกมสนุกและสมดุล</p>
+<div class="role-grid">
+<div class="role">🐺<b>หมาป่า</b><small>กำจัดชาวบ้าน</small></div><div class="role">🧟<b>ยาจก</b><small>บทบาทพิเศษ</small></div><div class="role">🔮<b>ดูดวง</b><small>ตรวจบทบาท</small></div><div class="role">🛡️<b>บริการ์ด</b><small>ปกป้องผู้เล่น</small></div><div class="role">👨‍🌾<b>ชาวบ้าน</b><small>หาหมาป่า</small></div>
+</div><div class="actions"><button onclick="makeCards()">สร้างไพ่</button></div>
+</div></section>
+
+<section id="cardsScreen" class="screen">
+<h1>🃏 เลือกไพ่ของคุณ</h1><p class="sub">แตะไพ่เพื่อเปิดดูบทบาท แล้วจำบทบาทของตัวเองไว้</p>
+<div class="notice">ไพ่ทั้งหมด <b id="cardCount"></b> ใบ • เลือกได้ทีละใบ</div>
+<div id="cards" class="cards"></div>
+<div id="chosen" class="panel hidden"></div>
+<div class="actions"><button class="secondary" onclick="backSetup()">ย้อนกลับ</button><button id="startBtn" class="green hidden" onclick="startGame()">เริ่มเกม</button></div>
+</section>
+
+<section id="gameScreen" class="screen">
+<div class="hero"><div class="logo">🌙</div><h1>ห้องควบคุมเกม</h1><p class="sub">ผู้ควบคุมใช้หน้านี้จัดการรอบเกม</p></div>
+<div class="panel"><div id="phase" class="phase night">🌙 กลางคืน</div><div id="timer" class="timer">05:00</div><div class="actions"><button onclick="toggleTimer()" id="timerBtn">เริ่มเวลา</button><button class="secondary" onclick="nextPhase()">เปลี่ยนช่วง</button><button class="danger" onclick="newGame()">เริ่มเกมใหม่</button></div></div>
+<div id="winner" class="winner"></div>
+<div class="panel"><h2>ผู้เล่นและบทบาท</h2><div id="players" class="players"></div></div>
+<div class="panel"><h2>🌙 การกระทำในตอนกลางคืน</h2><label>หมาป่าฆ่าใคร?</label><select id="kill"></select><label>บริการ์ดปกป้องใคร?</label><select id="protect"></select><div class="actions"><button onclick="applyNight()">บันทึกผลกลางคืน</button></div><p class="sub">ถ้าคนที่ถูกฆ่าถูกปกป้อง จะไม่ตายในคืนนั้น</p></div>
+</section>
+</div>
+<script>
+let roles=[],players=[],selected=null,phase='night',seconds=300,timer=null,round=1;
+const roleNames=['หมาป่า','ยาจก','ดูดวง','บริการ์ด','ชาวบ้าน'];
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function shuffle(a){return a.sort(()=>Math.random()-.5)}
+function makeCards(){
+ let n=Math.max(5,Math.min(40,+document.getElementById('count').value||8));
+ roles=[];let wolves=Math.max(1,Math.floor(n/5));for(let i=0;i<wolves;i++)roles.push('หมาป่า');
+ if(n>=7)roles.push('ดูดวง');if(n>=6)roles.push('บริการ์ด');if(n>=8)roles.push('ยาจก');
+ while(roles.length<n)roles.push('ชาวบ้าน');shuffle(roles);
+ document.getElementById('cardCount').textContent=n;let box=document.getElementById('cards');box.innerHTML='';selected=null;
+ roles.forEach((r,i)=>{let c=document.createElement('div');c.className='card';c.innerHTML='<div class="front">🃏<br><small>ไพ่ใบที่ '+(i+1)+'</small></div>';c.onclick=()=>chooseCard(i,c);box.appendChild(c)});
+ document.getElementById('chosen').classList.add('hidden');document.getElementById('startBtn').classList.add('hidden');show('cardsScreen');
+}
+function chooseCard(i,c){if(selected!==null)return;selected=i;c.classList.add('selected');document.getElementById('chosen').classList.remove('hidden');document.getElementById('chosen').innerHTML='<h2>บทบาทของคุณ</h2><div class="winner">'+roles[i]+'</div><p class="sub">จำบทบาทของคุณไว้ แล้วส่งต่อเครื่องให้ผู้เล่นคนต่อไป</p>';document.getElementById('startBtn').classList.remove('hidden')}
+function startGame(){players=roles.map((role,i)=>({name:'ผู้เล่น '+(i+1),role,dead:false}));renderPlayers();fillSelects();show('gameScreen')}
+function renderPlayers(){let box=document.getElementById('players');box.innerHTML='';players.forEach((p,i)=>{let d=document.createElement('div');d.className='player'+(p.dead?' dead':'');d.innerHTML='<strong>'+p.name+'</strong><div class="pill">'+p.role+'</div><label class="check"><input type="checkbox" '+(p.dead?'checked':'')+' onchange="players['+i+'].dead=this.checked;checkWinner();"> ตายแล้ว</label>';box.appendChild(d)})}
+function fillSelects(){['kill','protect'].forEach(id=>{let s=document.getElementById(id);s.innerHTML='<option value="">-- เลือกผู้เล่น --</option>';players.forEach((p,i)=>{if(!p.dead)s.innerHTML+='<option value="'+i+'">'+p.name+'</option>'})})}
+function applyNight(){let k=document.getElementById('kill').value,pr=document.getElementById('protect').value;if(k==='')return alert('เลือกผู้เล่นที่หมาป่าฆ่าก่อน');if(k!==pr)players[k].dead=true;renderPlayers();fillSelects();checkWinner();alert(k===pr?'บริการ์ดปกป้องสำเร็จ!':'บันทึกผลกลางคืนแล้ว')}
+function checkWinner(){let wolves=players.filter(p=>!p.dead&&p.role==='หมาป่า').length, villagers=players.filter(p=>!p.dead&&p.role!=='หมาป่า').length;let w=document.getElementById('winner');if(wolves===0)w.textContent='🎉 ฝ่ายชาวบ้านชนะ!';else if(wolves>=villagers)w.textContent='🐺 ฝ่ายหมาป่าชนะ!';else w.textContent=''}
+function toggleTimer(){if(timer){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='เริ่มเวลา'}else{timer=setInterval(()=>{seconds--;if(seconds<=0){seconds=0;clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='เริ่มเวลา';alert('หมดเวลา! เปลี่ยนช่วงได้เลย')}updateTimer()},1000);document.getElementById('timerBtn').textContent='หยุดเวลา'}}
+function updateTimer(){document.getElementById('timer').textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')}
+function nextPhase(){phase=phase==='night'?'day':'night';seconds=300;updateTimer();document.getElementById('phase').textContent=phase==='night'?'🌙 กลางคืน':'☀️ กลางวัน';document.getElementById('phase').className='phase '+phase;if(timer){clearInterval(timer);timer=null;document.getElementById('timerBtn').textContent='เริ่มเวลา'}round++}
+function newGame(){if(confirm('เริ่มเกมใหม่ใช่ไหม?')){if(timer)clearInterval(timer);timer=null;phase='night';seconds=300;round=1;show('setup')}}
+function backSetup(){show('setup')}
+updateTimer();
+</script>
+</body>
+</html>
