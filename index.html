@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wolf Night — เกมหมาป่า</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:radial-gradient(circle at top,#34245f,#101426 65%);color:#fff;min-height:100vh}
+button,input{font:inherit}button{cursor:pointer;border:0}.app{max-width:1100px;margin:auto;padding:22px}.screen{display:none;min-height:90vh}.screen.active{display:block}
+.card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:28px;box-shadow:0 15px 50px #0005;backdrop-filter:blur(10px)}
+.hero{text-align:center;padding-top:9vh}.wolf{font-size:72px}.hero h1{font-size:clamp(38px,8vw,70px);margin:5px 0;background:linear-gradient(90deg,#f8d477,#ff8aa7,#a98cff);color:transparent;background-clip:text}
+.sub{opacity:.78}.label{display:block;margin:18px 0 8px;font-weight:700}.input{width:100%;padding:15px 18px;border-radius:14px;border:1px solid #ffffff22;background:#15192d;color:white;outline:0}
+.btn{padding:13px 20px;border-radius:14px;font-weight:800;color:#171426;background:linear-gradient(135deg,#ffd76d,#ff9fb4);margin:8px 5px 0 0}.btn.secondary{background:#ffffff16;color:white;border:1px solid #ffffff20}.btn.danger{background:#ff687d;color:white}.center{text-align:center}
+.role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-top:20px}.role{padding:18px;border-radius:18px;background:#ffffff0d;border:1px solid #ffffff12}.role b{display:block;margin-bottom:5px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-top:20px}.playing-card{height:210px;perspective:800px}.inner{height:100%;transition:.6s;transform-style:preserve-3d;position:relative}.playing-card.open .inner{transform:rotateY(180deg)}.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:20px;display:flex;align-items:center;justify-content:center;text-align:center;padding:15px;border:2px solid #ffffff24;box-shadow:0 10px 30px #0005}.back{background:linear-gradient(145deg,#4c2c83,#171b38);font-size:45px}.front{transform:rotateY(180deg);background:linear-gradient(145deg,#fff,#dedcf8);color:#201b35;flex-direction:column}.front .emoji{font-size:48px}.selectable{transition:.2s}.selectable:hover{transform:translateY(-5px);filter:brightness(1.1)}
+.small{font-size:13px;opacity:.7}.topbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.status{padding:10px 14px;border-radius:999px;background:#ffffff12}.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:18px}.player{padding:16px;border-radius:18px;background:#ffffff0b;border:1px solid #ffffff12}.dead{opacity:.45;text-decoration:line-through}.pill{display:inline-block;padding:5px 9px;border-radius:999px;background:#ffffff15;font-size:12px;margin-top:7px}
+.timer{text-align:center;font-size:48px;font-weight:900;margin:18px 0}.phase{font-size:24px;font-weight:900}.controls{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.list{display:grid;gap:8px}.check{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#ffffff08}.check input{width:20px;height:20px}
+.notice{padding:14px;border-radius:14px;background:#ffd76d1a;border:1px solid #ffd76d33;color:#ffe8a9;margin-top:15px}
+@media(max-width:650px){.controls{grid-template-columns:1fr}.app{padding:13px}.card{padding:19px}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<section id="s1" class="screen active">
+<div class="hero">
+<div class="wolf">🐺🌙</div><h1>WOLF NIGHT</h1><p class="sub">เกมหมาป่าสำหรับเล่นด้วยกันในวงเพื่อน</p>
+<div class="card" style="max-width:520px;margin:30px auto">
+<label class="label">จำนวนผู้เล่น</label><input id="count" class="input" type="number" min="5" max="30" value="8" placeholder="เช่น 8">
+<p class="small">แนะนำ 5–30 คน • ระบบจะกระจายบทบาทให้อัตโนมัติ</p>
+<button class="btn" onclick="makeCards()">เริ่มแจกไพ่ →</button>
+</div></div>
+</section>
+
+<section id="s2" class="screen">
+<div class="topbar"><div><h2>🃏 แจกไพ่บทบาท</h2><div class="sub">ผู้เล่นแต่ละคนเลือกไพ่ 1 ใบ แล้วกด “เปิด” เพื่อดูบทบาท</div></div><div class="status" id="remain"></div></div>
+<div class="notice">เลือกไพ่ → เปิด → จำบทบาทของตัวเอง → กดปิด ไพ่ใบนั้นจะถูกนำออกจากกอง</div>
+<div id="cards" class="cards"></div>
+<div class="center" style="margin-top:22px"><button id="finish" class="btn" onclick="finishDeal()" disabled>แจกครบแล้ว → ไปหน้ารายชื่อ</button></div>
+</section>
+
+<section id="s3" class="screen">
+<div class="topbar"><div><h2>📜 รายชื่อผู้เล่น & บทบาท</h2><div class="sub">กรอกชื่อผู้เล่นให้ตรงกับลำดับที่ได้รับไพ่</div></div><button class="btn secondary" onclick="newGame()">เริ่มเกมใหม่</button></div>
+<div id="setupPlayers"></div>
+<div class="center"><button class="btn" onclick="startRound()">เริ่มรอบที่ 1 →</button></div>
+</section>
+
+<section id="s4" class="screen">
+<div class="topbar"><div><div class="phase" id="phase"></div><div class="sub" id="round"></div></div><div class="status">⏱️ <span id="timer">05:00</span></div></div>
+<div class="card" style="margin-top:18px">
+<h3>👥 ผู้เล่น</h3><div id="playersList" class="players"></div>
+</div>
+<div class="controls">
+<div class="card"><h3>🐺 หมาป่าฆ่าใครในคืนนี้?</h3><div id="killList" class="list"></div><button class="btn" onclick="nextPhase()">บันทึก / ไปช่วงถัดไป</button></div>
+<div class="card"><h3>🛡️ บริการ์ดปกป้องใคร?</h3><div id="guardList" class="list"></div><button class="btn secondary" onclick="togglePhase()">สลับ เช้า / กลางคืน</button></div>
+</div>
+<div class="center" style="margin-top:22px"><button class="btn danger" onclick="newGame()">เริ่มเกมใหม่</button></div>
+</section>
+</div>
+
+<script>
+let players=[], deck=[], chosen=[], phase='night', round=1, seconds=300, timerId=null;
+
+const roles={
+ "หมาป่า":{e:"🐺",team:"หมาป่า"},
+ "ยาจก":{e:"🧺",team:"ชาวบ้าน"},
+ "ดูดวง":{e:"🔮",team:"ชาวบ้าน"},
+ "บริการ์":{e:"🛡️",team:"ชาวบ้าน"},
+ "ชาวบ้าน":{e:"🏠",team:"ชาวบ้าน"}
+};
+function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active')}
+function makeDeck(n){
+ let w=Math.max(1,Math.floor(n/5)); let g=Math.max(1,Math.floor(n/5)); let se=Math.max(1,Math.floor(n/6));
+ let d=[]; for(let i=0;i<w;i++)d.push("หมาป่า"); for(let i=0;i<g;i++)d.push("ยาจก"); for(let i=0;i<se;i++)d.push("ดูดวง"); d.push("บริการ์");
+ while(d.length<n)d.push("ชาวบ้าน");
+ return d.slice(0,n).sort(()=>Math.random()-.5);
+}
+function makeCards(){
+ let n=+document.getElementById('count').value;if(n<5||n>30)return alert('กรุณาใส่จำนวน 5–30 คน');
+ deck=makeDeck(n);chosen=[];renderCards();show('s2');
+}
+function renderCards(){
+ const c=document.getElementById('cards');c.innerHTML='';
+ deck.forEach((r,i)=>{
+  const el=document.createElement('div');el.className='playing-card selectable';
+  el.innerHTML=`<div class="inner"><div class="face back">🃏<div class="small">เลือกไพ่ใบนี้</div></div><div class="face front"><div class="emoji">${roles[r].e}</div><b>${r}</b><span class="small">บทบาทของคุณ</span><button class="btn secondary" onclick="closeCard(event,this)">ปิด</button></div></div>`;
+  el.onclick=()=>openCard(el,i);c.appendChild(el);
+ });
+ document.getElementById('remain').textContent=`เหลือ ${deck.length} ใบ`;
+}
+function openCard(el,i){if(el.classList.contains('open'))return;el.classList.add('open')}
+function closeCard(ev,btn){
+ ev.stopPropagation();let card=btn.closest('.playing-card'), i=[...document.querySelectorAll('.playing-card')].indexOf(card);
+ chosen.push(deck[i]);deck.splice(i,1);renderCards();
+ if(deck.length===0)document.getElementById('finish').disabled=false;
+}
+function finishDeal(){
+ players=chosen.map((role,i)=>({name:`ผู้เล่น ${i+1}`,role,dead:false}));
+ document.getElementById('setupPlayers').innerHTML=players.map((p,i)=>`<div class="card" style="margin:10px 0;display:flex;gap:12px;align-items:center"><b>${i+1}.</b><input class="input" value="${p.name}" onchange="players[${i}].name=this.value"><span class="pill">${roles[p.role].e} ${p.role}</span></div>`).join('');
+ show('s3');
+}
+function startRound(){phase='night';round=1;seconds=300;renderGame();startTimer();show('s4')}
+function renderGame(){
+ document.getElementById('phase').textContent=phase==='night'?'🌙 กลางคืน':'☀️ ตอนเช้า';
+ document.getElementById('round').textContent=`รอบที่ ${round}`;
+ document.getElementById('playersList').innerHTML=players.map((p,i)=>`<div class="player ${p.dead?'dead':''}"><b>${p.name}</b><div class="small">${roles[p.role].e} ${p.role}</div><label class="check"><input type="checkbox" ${p.dead?'checked':''} onchange="players[${i}].dead=this.checked;renderGame()"> ตายแล้ว</label></div>`).join('');
+ let alive=players.filter(p=>!p.dead);
+ document.getElementById('killList').innerHTML=alive.map((p,i)=>`<label class="check"><input type="radio" name="kill" value="${players.indexOf(p)}"> ${p.name}</label>`).join('');
+ document.getElementById('guardList').innerHTML=alive.map((p,i)=>`<label class="check"><input type="radio" name="guard" value="${players.indexOf(p)}"> ${p.name}</label>`).join('');
+ checkWin();
+}
+function startTimer(){clearInterval(timerId);timerId=setInterval(()=>{seconds--;if(seconds<=0){seconds=300;togglePhase()}updateTimer()},1000);updateTimer()}
+function updateTimer(){let m=String(Math.floor(seconds/60)).padStart(2,'0'),s=String(seconds%60).padStart(2,'0');document.getElementById('timer').textContent=m+':'+s}
+function togglePhase(){phase=phase==='night'?'morning':'night';if(phase==='night')round++;seconds=300;renderGame()}
+function nextPhase(){
+ const k=document.querySelector('input[name=kill]:checked');
+ if(phase==='night'&&k){players[+k.value].dead=true;alert(players[+k.value].name+' ถูกบันทึกว่าเสียชีวิตในคืนนี้');}
+ togglePhase();
+}
+function checkWin(){
+ let wolves=players.filter(p=>!p.dead&&p.role==='หมาป่า').length;
+ let villagers=players.filter(p=>!p.dead&&p.role!=='หมาป่า').length;
+ if(wolves===0){clearInterval(timerId);setTimeout(()=>alert('🎉 ฝ่ายชาวบ้านชนะ! กำจัดหมาป่าได้ทั้งหมด'),100)}
+ else if(wolves>=villagers){clearInterval(timerId);setTimeout(()=>alert('🐺 ฝ่ายหมาป่าชนะ! จำนวนหมาป่าเท่ากับหรือมากกว่าชาวบ้าน'),100)}
+}
+function newGame(){clearInterval(timerId);players=[];deck=[];chosen=[];show('s1')}
+</script>
+</body>
+</html>
