@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เกมหมาป่า Werewolf</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#100b27,#38215c);color:#fff;min-height:100vh;padding:20px}.app{max-width:1000px;margin:auto}h1,h2{text-align:center}.panel{background:#21183f;border:1px solid #60458c;border-radius:20px;padding:22px;margin:15px 0;box-shadow:0 8px 30px #0004}.screen{display:none}.screen.active{display:block}.center{text-align:center}input,select{width:100%;padding:12px;border-radius:10px;border:1px solid #7659a5;background:#130d2b;color:#fff;margin:8px 0 15px}.btn{padding:12px 18px;border:0;border-radius:10px;background:#8b5cf6;color:#fff;font-weight:bold;margin:5px;cursor:pointer}.btn.red{background:#c0395b}.btn.green{background:#168a68}.btn.gray{background:#51416d}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:15px}.card{height:180px;perspective:800px;cursor:pointer}.inner{height:100%;transition:.5s;transform-style:preserve-3d;position:relative}.card.open .inner{transform:rotateY(180deg)}.face{position:absolute;inset:0;backface-visibility:hidden;border-radius:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border:2px solid #a78bfa;padding:8px}.back{background:linear-gradient(145deg,#45246c,#17102f);font-size:35px}.front{background:#eee5ff;color:#24133b;transform:rotateY(180deg)}.front b{font-size:18px}.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.stat{background:#342653;border-radius:12px;padding:12px 20px;text-align:center}.stat b{display:block;font-size:25px}.players{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.player{background:#302449;border-radius:12px;padding:12px}.dead{text-decoration:line-through;opacity:.45}.row{display:flex;gap:8px;align-items:center;background:#19112f;padding:8px;border-radius:8px;margin:6px 0}.row input{width:auto;margin:0}.timer{text-align:center;font-size:55px;color:#c4b5fd;font-weight:bold}.notice{padding:12px;background:#30234d;border-radius:12px;margin:12px 0}footer{text-align:center;color:#aaa;margin:25px}@media(max-width:500px){body{padding:10px}.panel{padding:15px}.card{height:145px}.back{font-size:25px}.timer{font-size:42px}}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>🐺 WEREWOLF 🎴</h1><p style="text-align:center">เกมหมาป่า Mystery Village</p>
+
+<section id="setup" class="screen active">
+<div class="panel center"><h2>🌙 ตั้งค่าเกม</h2><p>กรอกจำนวนผู้เล่น 5–30 คน</p>
+<input id="count" type="number" min="5" max="30" value="8">
+<button class="btn" onclick="createGame()">เริ่มเกม →</button><p id="error"></p></div>
+</section>
+
+<section id="draw" class="screen">
+<div class="panel"><h2>🎴 เลือกไพ่ของคุณ</h2><p>เลือกไพ่ 1 ใบ แล้วกดเปิดเพื่อดูบทบาท จากนั้นกดปิดไพ่</p>
+<div class="stats"><div class="stat"><b id="total">0</b>ไพ่ทั้งหมด</div><div class="stat"><b id="opened">0</b>เปิดแล้ว</div></div>
+<div id="cards" class="cards"></div><div id="message" class="notice">เลือกไพ่ก่อน</div>
+<button class="btn gray" onclick="closeCard()">🔒 ปิดไพ่</button><button class="btn" onclick="openCard()">👁️ เปิดไพ่</button>
+<button id="go" class="btn green" disabled onclick="goGame()">ไปหน้าผู้คุมเกม →</button></div>
+</section>
+
+<section id="game" class="screen">
+<div class="panel"><h2>🎮 ควบคุมเกม</h2><div id="phase" class="notice center">☀️ กลางวัน</div><div id="timer" class="timer">05:00</div>
+<div class="center"><button class="btn" onclick="toggleTimer()" id="timerBtn">▶ เริ่มเวลา</button><button class="btn gray" onclick="nextPhase()">เปลี่ยนช่วง</button><button class="btn red" onclick="resetGame()">เริ่มเกมใหม่</button></div></div>
+<div class="stats"><div class="stat"><b id="alive">0</b>ยังอยู่</div><div class="stat"><b id="wolves">0</b>หมาป่า</div><div class="stat"><b id="villagers">0</b>ชาวบ้าน</div></div>
+<div id="winner" class="panel center" style="display:none"></div>
+<div class="panel"><h2>👥 รายชื่อและบทบาท</h2><div id="players" class="players"></div></div>
+<div class="panel"><h2>📝 จัดการรอบ</h2><h3>💀 ติ๊กคนตาย</h3><div id="deadList"></div>
+<h3>🐺 หมาป่าฆ่าใคร?</h3><select id="wolfTarget"></select><button class="btn red" onclick="kill()">บันทึกการฆ่า</button>
+<h3>🛡️ บอดี้การ์ดปกป้องใคร?</h3><select id="guardTarget"></select><button class="btn green" onclick="protect()">บันทึกการปกป้อง</button>
+<div id="log" class="notice">บันทึกการเล่น</div></div>
+<div class="panel"><h2>📖 กติกา</h2><p>🏡 ชาวบ้านชนะเมื่อกำจัดหมาป่าได้ทั้งหมด</p><p>🐺 หมาป่าชนะเมื่อจำนวนหมาป่าเท่ากับหรือมากกว่าชาวบ้าน</p></div>
+</section>
+<footer>WEREWOLF • Mystery Village</footer>
+</div>
+<script>
+const roles={wolf:['🐺','หมาป่า','หมาป่า'],beggar:['🧙','ยาจก','ชาวบ้าน'],seer:['🔮','ดูดวง','ชาวบ้าน'],guard:['🛡️','บอดี้การ์ด','ชาวบ้าน'],villager:['👨‍🌾','ชาวบ้าน','ชาวบ้าน']};
+let ps=[],chosen=null,opened=new Set(),phase='day',sec=300,interval=null,running=false,ended=false;
+const $=id=>document.getElementById(id);
+function screen(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));$(id).classList.add('active')}
+function createGame(){let n=+$('count').value;if(n<5||n>30){$('error').textContent='กรุณาใส่ 5–30 คน';return}ps=Array.from({length:n},(_,i)=>({id:i,name:'ผู้เล่น '+(i+1),alive:true,role:'villager'}));let a=Array(Math.max(1,Math.floor(n/4))).fill('wolf');if(n>=5)a.push('seer');if(n>=6)a.push('guard');if(n>=7)a.push('beggar');while(a.length<n)a.push('villager');a.sort(()=>Math.random()-.5);ps.forEach((p,i)=>p.role=a[i]);chosen=null;opened.clear();$('total').textContent=n;renderCards();screen('draw')}
+function renderCards(){$('cards').innerHTML=ps.map((p,i)=>`<div class="card ${chosen===i?'chosen':''} ${opened.has(i)?'open':''}" onclick="choose(${i})"><div class="inner"><div class="face back">🎴<small>ไพ่ ${i+1}</small></div><div class="face front">${roles[p.role][0]}<b>${roles[p.role][1]}</b><small>ฝ่าย${roles[p.role][2]}</small></div></div></div>`).join('');$('opened').textContent=opened.size;$('go').disabled=opened.size!==ps.length}
+function choose(i){chosen=i;$('message').textContent='เลือกไพ่ใบที่ '+(i+1);renderCards()}
+function openCard(){if(chosen===null){$('message').textContent='กรุณาเลือกไพ่';return}opened.add(chosen);$('message').textContent='บทบาท: '+roles[ps[chosen].role][0]+' '+roles[ps[chosen].role][1];renderCards()}
+function closeCard(){if(chosen!==null)opened.delete(chosen);renderCards();$('message').textContent='ปิดไพ่แล้ว'}
+function goGame(){if(opened.size!==ps.length)return;renderGame();screen('game');startPhase('day')}
+function renderGame(){renderPlayers();renderDead();targets();stats()}
+function renderPlayers(){$('players').innerHTML=ps.map(p=>`<div class="player ${p.alive?'':'dead'}"><b>${p.name} ${p.alive?'':'💀'}</b><br>${roles[p.role][0]} ${roles[p.role][1]}<br><small>ฝ่าย${roles[p.role][2]}</small></div>`).join('')}
+function renderDead(){$('deadList').innerHTML=ps.map(p=>`<div class="row"><input type="checkbox" ${p.alive?'':'checked'} onchange="toggleDead(${p.id},this.checked)"><span class="${p.alive?'':'dead'}">${p.name}</span></div>`).join('')}
+function targets(){['wolfTarget','guardTarget'].forEach(id=>$(id).innerHTML='<option value="">-- เลือกผู้เล่น --</option>'+ps.filter(p=>p.alive).map(p=>`<option value="${p.id}">${p.name}</option>`).join(''))}
+function stats(){let a=ps.filter(p=>p.alive),w=a.filter(p=>p.role==='wolf').length;$('alive').textContent=a.length;$('wolves').textContent=w;$('villagers').textContent=a.length-w}
+function toggleDead(id,checked){ps.find(p=>p.id===id).alive=!checked;renderGame();check()}
+function kill(){let id=$('wolfTarget').value;if(id===''){log('เลือกผู้เล่นก่อน');return}ps.find(p=>p.id==id).alive=false;log('🐺 หมาป่าฆ่า '+ps.find(p=>p.id==id).name);renderGame();check()}
+function protect(){let id=$('guardTarget').value;if(id===''){log('เลือกผู้เล่นก่อน');return}log('🛡️ บอดี้การ์ดปกป้อง '+ps.find(p=>p.id==id).name)}
+function log(t){$('log').textContent=t}
+function check(){let a=ps.filter(p=>p.alive),w=a.filter(p=>p.role==='wolf').length;if(w===0)end('🏡 ฝ่ายชาวบ้านชนะ!');else if(w>=a.length-w)end('🐺 ฝ่ายหมาป่าชนะ!')}
+function end(t){ended=true;stop();$('winner').style.display='block';$('winner').innerHTML='<h2>'+t+'</h2><p>เกมจบแล้ว</p><button class="btn" onclick="resetGame()">เริ่มเกมใหม่</button>'}
+function startPhase(p){phase=p;sec=300;stop();$('phase').textContent=p==='day'?'☀️ กลางวัน':'🌙 กลางคืน';updateTimer()}
+function toggleTimer(){if(running)stop();else{running=true;$('timerBtn').textContent='⏸ หยุดเวลา';interval=setInterval(()=>{sec--;updateTimer();if(sec<=0){stop();log('⏰ หมดเวลาแล้ว')}},1000)}}
+function stop(){clearInterval(interval);interval=null;running=false;if($('timerBtn'))$('timerBtn').textContent='▶ เริ่มเวลา'}
+function updateTimer(){$('timer').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')}
+function nextPhase(){if(ended)return;startPhase(phase==='day'?'night':'day');log(phase==='night'?'🌙 เข้าสู่กลางคืน':'☀️ เข้าสู่กลางวัน')}
+function resetGame(){stop();ended=false;ps=[];chosen=null;opened.clear();$('winner').style.display='none';screen('setup')}
+</script>
+</body>
+</html>
