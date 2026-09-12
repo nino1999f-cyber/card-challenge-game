@@ -71,7 +71,7 @@ const roles={
 function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active')}
 function makeDeck(n){
  let w=Math.max(1,Math.floor(n/5)); let g=Math.max(1,Math.floor(n/5)); let se=Math.max(1,Math.floor(n/6));
- let d=[]; for(let i=0;i<w;i++)d.push("หมาป่า"); for(let i=0;i<g;i++)d.push("ยาจก"); for(let i=0;i<se;i++)d.push("ดูดวง"); d.push("บริการ์ด");
+ let d=[]; for(let i=0;i<w;i++)d.push("หมาป่า"); for(let i=0;i<g;i++)d.push("ยาจก"); for(let i=0;i<se;i++)d.push("ดูดวง"); d.push("บริการ์");
  while(d.length<n)d.push("ชาวบ้าน");
  return d.slice(0,n).sort(()=>Math.random()-.5);
 }
