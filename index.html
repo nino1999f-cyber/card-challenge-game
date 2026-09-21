@@ -84,12 +84,38 @@ function toNames(){
  document.getElementById("names").innerHTML=`<div class="player-list">${s}</div>`;show(3);
 }
 function startGame(){
- state.players=[];
- const used={};
- for(let i=0;i<state.count;i++){let name=document.getElementById("name-"+i).value.trim()||`ผู้เล่น ${i+1}`;let role=Object.keys(state.roles).find(r=>{used[r]=(used[r]||0)+1;return false});}
- let idx=0; for(const [r,q] of Object.entries(state.roles))for(let k=0;k<q;k++)state.players.push({id:idx++,name:(document.getElementById("name-"+(idx-1)).value.trim()||`ผู้เล่น ${idx}`),role:r,dead:false,muted:false});
- renderGame();
+  const players = [];
+  let index = 0;
+
+  for (const [role, qty] of Object.entries(state.roles)) {
+    for (let i = 0; i < qty; i++) {
+      const input = document.getElementById("name-" + index);
+      const name = input && input.value.trim() ? input.value.trim() : "ผู้เล่น " + (index + 1);
+      players.push({
+        id: index,
+        name,
+        role,
+        dead: false,
+        muted: false
+      });
+      index++;
+    }
+  }
+
+  if (players.length !== state.count) {
+    alert("จำนวนผู้เล่นไม่ตรงกับจำนวนบทบาทที่เลือก");
+    return;
+  }
+
+  state.players = players;
+  state.round = 1;
+  state.phase = "night";
+  state.history = [];
+  state.actions = {};
+  show(4);
+  renderGame();
 }
+
 function alivePlayers(exclude=[]){return state.players.filter(p=>!p.dead&&!exclude.includes(p.role))}
 function choices(id,exclude=[]){
  return alivePlayers(exclude).map(p=>`<label class="choice"><input type="radio" name="${id}" value="${p.id}"> ${p.name}<span class="muted small">(${p.role})</span></label>`).join("")||"<div class='muted'>ไม่มีผู้เล่นที่เลือกได้</div>";
@@ -122,25 +148,77 @@ function actionBox(title,id,exclude){
 }
 function getChoice(id){const x=document.querySelector(`input[name="${id}"]:checked`);return x?+x.value:null}
 function saveData(){
- if(state.phase==="night"){
-  state.actions={wolfKill:getChoice("wolfKill"),seer:getChoice("seer"),hunter:getChoice("hunter"),guard:getChoice("guard"),witch:getChoice("witch")};
-  let msgs=[];
-  const a=state.actions;
-  if(a.wolfKill!=null){
-   const target=state.players.find(p=>p.id===a.wolfKill), guard=state.players.find(p=>p.id===a.guard);
-   if(!guard||guard.id!==target.id){target.dead=true;msgs.push(`🐺 หมาป่าโจมตี ${target.name} — เสียชีวิต`)}
-   else msgs.push(`🛡️ บริการ์ดปกป้อง ${target.name} สำเร็จ — ไม่มีผู้เสียชีวิตจากหมาป่า`);
+  if(state.phase === "night"){
+    state.actions = {
+      wolfKill: getChoice("wolfKill"),
+      seer: getChoice("seer"),
+      hunter: getChoice("hunter"),
+      guard: getChoice("guard"),
+      witch: getChoice("witch")
+    };
+
+    const a = state.actions;
+    const messages = [];
+
+    // หมาป่าโจมตี
+    if(a.wolfKill !== null){
+      const target = state.players.find(p => p.id === a.wolfKill);
+      const guard = state.players.find(p => p.id === a.guard && !p.dead);
+
+      if(target && !target.dead){
+        if(guard && guard.id === target.id){
+          messages.push(`🛡️ บริการ์ดปกป้อง ${target.name} สำเร็จ — เช้านี้ไม่มีคนตายจากหมาป่า`);
+        }else{
+          target.dead = true;
+          messages.push(`🐺 หมาป่าฆ่า ${target.name} — เสียชีวิต`);
+        }
+      }
+    }
+
+    // นายพรานยิง: ถ้ายิงฝ่ายดี นายพรานตายคู่
+    if(a.hunter !== null){
+      const hunter = state.players.find(p => p.role === "นายพราน" && !p.dead);
+      const target = state.players.find(p => p.id === a.hunter);
+
+      if(hunter && target && !target.dead && target.id !== hunter.id){
+        target.dead = true;
+        const isWolf = target.role === "หมาป่า" || target.role === "ลูกหมาป่า";
+
+        if(isWolf){
+          messages.push(`🏹 นายพรานยิง ${target.name} — เป็นฝ่ายหมาป่า`);
+        }else{
+          hunter.dead = true;
+          messages.push(`🏹 นายพรานยิง ${target.name} ซึ่งเป็นฝ่ายคนดี — นายพรานตายคู่`);
+        }
+      }
+    }
+
+    // จอมเวทปิดปาก
+    if(a.witch !== null){
+      const target = state.players.find(p => p.id === a.witch);
+      if(target && !target.dead){
+        target.muted = true;
+        messages.push(`🪄 จอมเวทปิดปาก ${target.name}`);
+      }
+    }
+
+    // เทพพยากรณ์: บันทึกผลการดูดวง
+    if(a.seer !== null){
+      const target = state.players.find(p => p.id === a.seer);
+      if(target){
+        const side = (target.role === "หมาป่า" || target.role === "ลูกหมาป่า") ? "🐺 ฝ่ายหมาป่า" : "🏠 ฝ่ายชาวบ้าน";
+        messages.push(`🔮 เทพพยากรณ์ตรวจสอบ ${target.name} → ${side}`);
+      }
+    }
+
+    state.history.push(messages.join("<br>") || "คืนนี้ไม่มีผู้เสียชีวิต");
   }
-  if(a.hunter!=null){
-   const target=state.players.find(p=>p.id===a.hunter);
-   if(target&&!target.dead){target.dead=true;const wolf=target.role==="หมาป่า"||target.role==="ลูกหมาป่า";msgs.push(`🏹 นายพรานยิง ${target.name} — ${wolf?"ถูกฝ่ายหมาป่า":"เป็นฝ่ายคนดี จึงตายคู่"}`)}
-  }
-  if(a.witch!=null){const target=state.players.find(p=>p.id===a.witch);if(target){target.muted=true;msgs.push(`🪄 จอมเวทปิดปาก ${target.name}`)}}
-  state.history.push(msgs.join("<br>")||"คืนนี้ไม่มีการกำจัดผู้เล่น");
-  alert("บันทึกผลกลางคืนแล้ว");
- }else alert("บันทึกสถานะกลางวันแล้ว");
- renderGame();
+
+  localStorage.setItem("werewolf-save", JSON.stringify(state));
+  renderGame();
+  alert("💾 บันทึกข้อมูลเรียบร้อยแล้ว");
 }
+
 function dayKill(id,on){if(on){const p=state.players.find(x=>x.id===id);if(p)p.dead=true;renderGame()}}
 function nextPhase(){if(checkWin()){alert("เกมจบแล้ว");return} if(state.phase==="night"){saveData();state.phase="day"}else{state.phase="night";state.round++} renderGame()}
 function checkWin(){
