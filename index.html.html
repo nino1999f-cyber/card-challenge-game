@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Werewolf Night</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Thai",sans-serif;background:linear-gradient(135deg,#090d1a,#17122d);color:#fff;min-height:100vh}
+.container{max-width:1050px;margin:auto;padding:24px 16px}.card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:24px;padding:24px;box-shadow:0 15px 45px #0006;backdrop-filter:blur(12px)}
+h1{margin:0 0 8px;font-size:32px}h2{margin-top:0}.muted{color:#b8bfd5}.step{display:none}.step.active{display:block}.btn{border:0;border-radius:14px;padding:13px 18px;font-size:16px;font-weight:700;cursor:pointer;background:#7c5cff;color:#fff}.btn.secondary{background:#30384f}.btn.danger{background:#c53d62}.btn:disabled{opacity:.45;cursor:not-allowed}
+input[type=number],input[type=text]{width:100%;padding:13px;border-radius:12px;border:1px solid #414a64;background:#11172a;color:#fff;font-size:16px}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:18px}
+.role{padding:15px;border:1px solid #3b4560;background:#12192b;border-radius:16px}.role-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.role-name{font-weight:800}.role input{width:70px}.role label{display:flex;align-items:center;gap:9px;cursor:pointer}.qty{display:flex;align-items:center;gap:8px;margin-top:12px}.qty button{width:36px;height:36px;border:0;border-radius:10px;background:#343d58;color:#fff;font-size:20px}
+.player-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}.player{padding:15px;background:#11182a;border:1px solid #343e59;border-radius:16px}.player.dead{text-decoration:line-through;opacity:.45}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#282f48;color:#dce2ff;font-size:13px;margin-top:7px}
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:15px 0}.summary .box{padding:14px;border-radius:15px;background:#11182a}.night{border-left:4px solid #7c5cff}.day{border-left:4px solid #f0bd54}.section{margin-top:18px;padding:18px;background:#0f1526;border-radius:18px}.choice{display:flex;align-items:center;gap:10px;padding:10px;border-bottom:1px solid #252d42}.choice:last-child{border-bottom:0}.choice input{width:19px;height:19px}
+.notice{padding:14px;border-radius:14px;background:#222b44;margin:12px 0}.win{padding:18px;border-radius:18px;background:linear-gradient(135deg,#33245e,#1d473e);margin-top:18px}.small{font-size:13px}.topbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<div class="topbar"><div><h1>🐺 Werewolf Night</h1><div class="muted">ระบบควบคุมเกมมนุษย์หมาป่า</div></div><div id="stepLabel" class="badge">ขั้นตอน 1 / 4</div></div>
+
+<section id="s1" class="step active">
+<h2>👥 จำนวนผู้เล่น</h2><p class="muted">กำหนดจำนวนผู้เล่นทั้งหมด</p>
+<input id="playerCount" type="number" min="3" max="50" placeholder="เช่น 10">
+<div class="actions"><button class="btn" onclick="toRoles()">ถัดไป →</button></div>
+</section>
+
+<section id="s2" class="step">
+<h2>🎴 เลือกบทบาท</h2><p class="muted">ติ๊กบทบาทที่ใช้ และปรับจำนวนของแต่ละบทบาท</p>
+<div id="roles" class="role-grid"></div>
+<div id="roleTotal" class="notice">เลือกแล้ว 0 / 0 คน</div>
+<div class="actions"><button class="btn secondary" onclick="show(1)">← ย้อนกลับ</button><button class="btn" onclick="toNames()">ยืนยันบทบาท →</button></div>
+</section>
+
+<section id="s3" class="step">
+<h2>✍️ ใส่ชื่อผู้เล่น</h2><p class="muted">ระบบสร้างช่องตามจำนวนบทบาทที่เลือก</p>
+<div id="names"></div>
+<div class="actions"><button class="btn secondary" onclick="show(2)">← ย้อนกลับ</button><button class="btn" onclick="startGame()">เริ่มเกม →</button></div>
+</section>
+
+<section id="s4" class="step">
+<div id="game"></div>
+</section>
+</div></div>
+
+<script>
+const roleDefs=[
+["หมาป่า","🐺","wolf"],["ลูกหมาป่า","🐾","wolf"],["ยาจก","🧺","good"],["นายกเทศมนตรี","🏛️","good"],
+["ผู้ป่วยติดเชื้อ","🦠","good"],["จอมเวท","🪄","good"],["ชาวบ้าน","🏠","good"],["นายพราน","🏹","good"],
+["บริการ์ด","🛡️","good"],["เทพพยากรณ์ ดูดวง","🔮","good"]
+];
+let state={count:0,roles:{},players:[],round:1,phase:"night",history:[],actions:{},dead:new Set()};
+
+function show(n){document.querySelectorAll(".step").forEach((x,i)=>x.classList.toggle("active",i===n-1));document.getElementById("stepLabel").textContent=`ขั้นตอน ${n} / 4`}
+
+function toRoles(){
+ const n=+document.getElementById("playerCount").value;
+ if(!n||n<3){alert("กรุณาใส่อย่างน้อย 3 คน");return}
+ state.count=n; renderRoles(); show(2);
+}
+function renderRoles(){
+ const el=document.getElementById("roles");el.innerHTML="";
+ roleDefs.forEach(([name,emoji,team])=>{
+  const checked=state.roles[name]!=null;
+  const qty=state.roles[name]||1;
+  el.innerHTML+=`<div class="role"><div class="role-top"><label><input type="checkbox" ${checked?"checked":""} onchange="toggleRole('${name}',this.checked)"> <span class="role-name">${emoji} ${name}</span></label></div>
+  <div class="qty"><button onclick="changeQty('${name}',-1)">−</button><input id="q-${name}" type="number" min="1" value="${qty}" ${checked?"":"disabled"} onchange="setQty('${name}',this.value)"><button onclick="changeQty('${name}',1)">+</button></div></div>`;
+ }); updateTotal();
+}
+function toggleRole(n,on){if(on)state.roles[n]=state.roles[n]||1;else delete state.roles[n];renderRoles()}
+function setQty(n,v){state.roles[n]=Math.max(1,+v||1);renderRoles()}
+function changeQty(n,d){state.roles[n]=Math.max(1,(state.roles[n]||1)+d);renderRoles()}
+function updateTotal(){
+ const total=Object.values(state.roles).reduce((a,b)=>a+b,0);
+ document.getElementById("roleTotal").textContent=`เลือกแล้ว ${total} / ${state.count} คน ${total===state.count?"✓ พร้อมเริ่ม":"— ต้องให้ครบจำนวนผู้เล่น"}`;
+}
+function toNames(){
+ const total=Object.values(state.roles).reduce((a,b)=>a+b,0);
+ if(total!==state.count){alert(`จำนวนบทบาทต้องเท่ากับ ${state.count} คน (ตอนนี้ ${total} คน)`);return}
+ let i=0,s="";
+ for(const [r,q] of Object.entries(state.roles))for(let k=1;k<=q;k++)s+=`<div class="player"><div class="badge">${r}</div><input id="name-${i}" type="text" placeholder="ชื่อผู้เล่น ${i+1}" style="margin-top:10px"></div>`;
+ document.getElementById("names").innerHTML=`<div class="player-list">${s}</div>`;show(3);
+}
+function startGame(){
+  const players = [];
+  let index = 0;
+
+  for (const [role, qty] of Object.entries(state.roles)) {
+    for (let i = 0; i < qty; i++) {
+      const input = document.getElementById("name-" + index);
+      const name = input && input.value.trim()
+        ? input.value.trim()
+        : "ผู้เล่น " + (index + 1);
+
+      players.push({
+        id: index,
+        name: name,
+        role: role,
+        dead: false,
+        muted: false
+      });
+      index++;
+    }
+  }
+
+  if (players.length !== state.count) {
+    alert("จำนวนผู้เล่นไม่ตรงกับจำนวนบทบาทที่เลือก");
+    return;
+  }
+
+  state.players = players;
+  state.round = 1;
+  state.phase = "night";
+  state.history = [];
+  state.actions = {};
+
+  // เก็บชื่อและข้อมูลไว้ เผื่อรีเฟรชหน้า
+  localStorage.setItem("werewolf-save", JSON.stringify(state));
+
+  show(4);
+  renderGame();
+}
+
+function alivePlayers(exclude=[]){return state.players.filter(p=>!p.dead&&!exclude.includes(p.role))}
+function choices(id,exclude=[]){
+ return alivePlayers(exclude).map(p=>`<label class="choice"><input type="radio" name="${id}" value="${p.id}"> ${p.name}<span class="muted small">(${p.role})</span></label>`).join("")||"<div class='muted'>ไม่มีผู้เล่นที่เลือกได้</div>";
+}
+function renderGame(){
+ const night=state.phase==="night";
+ const living=state.players.filter(p=>!p.dead);
+ const wolves=state.players.filter(p=>!p.dead&&(p.role==="หมาป่า"||p.role==="ลูกหมาป่า")).length;
+ const good=living.length-wolves;
+ let html=`<div class="topbar"><div><h2>${night?"🌙 กลางคืน":"☀️ กลางวัน"} — รอบที่ ${state.round}</h2><div class="muted">ผู้เล่นมีชีวิต ${living.length} คน</div></div>
+ <div class="actions"><button class="btn secondary" onclick="saveData()">💾 บันทึกข้อมูล</button><button class="btn" onclick="nextPhase()">ไป ${night?"กลางวัน":"กลางคืน"} →</button></div></div>`;
+ html+=`<div class="summary">${state.players.map(p=>`<div class="box ${p.dead?"player dead":""}">
+  <div style="font-size:18px;font-weight:800">${p.name}</div>
+  <span class="badge">${p.role}</span>
+  ${p.dead?"<br><span class='small'>☠️ เสียชีวิต</span>":""}
+</div>`).join("")}</div>`;
+ if(night){
+  const selectedRoles=new Set(state.players.filter(p=>!p.dead).map(p=>p.role));
+  if(selectedRoles.has("หมาป่า") || selectedRoles.has("ลูกหมาป่า")) html+=actionBox("1. 🐺 หมาป่าจะฆ่าใคร","wolfKill",["หมาป่า","ลูกหมาป่า"]);
+  if(selectedRoles.has("เทพพยากรณ์ ดูดวง")) html+=actionBox("2. 🔮 เทพพยากรณ์จะดูใคร","seer",["เทพพยากรณ์ ดูดวง"]);
+  if(selectedRoles.has("นายพราน")) html+=actionBox("3. 🏹 นายพรานจะเลือกยิงใคร","hunter",["นายพราน"]);
+  if(selectedRoles.has("บริการ์ด")) html+=actionBox("4. 🛡️ บริการ์ดจะปกป้องใคร","guard",["บริการ์ด"]);
+  if(selectedRoles.has("จอมเวท")) html+=actionBox("5. 🪄 จอมเวทจะปิดปากใคร","witch",["จอมเวท"]);
+  html+=`<div class="notice">💡 จะแสดงเฉพาะบทบาทที่เลือกไว้ในหน้าที่ 2 เท่านั้น</div>`;
+ }else{
+  html+=`<div class="section day"><h3>☀️ ผลของคืนที่ผ่านมา</h3><div id="result">${state.history.at(-1)||"ยังไม่มีเหตุการณ์"}</div></div>
+  <div class="section"><h3>☑️ จัดการสถานะผู้เล่น</h3><p class="muted">ถ้ามีผู้เล่นถูกกำจัดระหว่างกลางวัน ให้ติ๊กชื่อเพื่อขีดออก</p>${state.players.filter(p=>!p.dead).map(p=>`<label class="choice"><input type="checkbox" onchange="dayKill(${p.id},this.checked)"> ${p.name} <span class="muted">(${p.role})</span></label>`).join("")}</div>`;
+ }
+ const win=checkWin();
+ if(win)html+=`<div class="win"><h2>🏆 ${win}</h2><p>เกมสิ้นสุดแล้ว สามารถตรวจสอบรายชื่อและบทบาทด้านบนได้</p></div>`;
+ document.getElementById("game").innerHTML=html;
+}
+function actionBox(title,id,exclude){
+ return `<div class="section ${state.phase}"><h3>${title}</h3>${choices(id,exclude)}</div>`;
+}
+function getChoice(id){const x=document.querySelector(`input[name="${id}"]:checked`);return x?+x.value:null}
+function saveData(){
+  if(state.phase==="night"){
+    const a={wolfKill:getChoice("wolfKill"),seer:getChoice("seer"),hunter:getChoice("hunter"),guard:getChoice("guard"),witch:getChoice("witch")};
+    state.actions=a;
+    const messages=[];
+    if(a.wolfKill!==null){
+      const target=state.players.find(p=>p.id===a.wolfKill);
+      const guard=state.players.find(p=>p.id===a.guard && !p.dead);
+      if(target && !target.dead){
+        if(guard && guard.id===target.id) messages.push(`🛡️ บริการ์ดปกป้อง ${target.name} สำเร็จ — เช้านี้ไม่มีคนตายจากหมาป่า`);
+        else { target.dead=true; messages.push(`🐺 หมาป่าฆ่า ${target.name} — เสียชีวิต`); }
+      }
+    }
+    if(a.hunter!==null){
+      const hunter=state.players.find(p=>p.role==="นายพราน" && !p.dead);
+      const target=state.players.find(p=>p.id===a.hunter);
+      if(hunter && target && !target.dead && target.id!==hunter.id){
+        target.dead=true;
+        if(target.role==="หมาป่า" || target.role==="ลูกหมาป่า") messages.push(`🏹 นายพรานยิง ${target.name} — เป็นฝ่ายหมาป่า`);
+        else { hunter.dead=true; messages.push(`🏹 นายพรานยิง ${target.name} ซึ่งเป็นฝ่ายคนดี — นายพรานตายคู่`); }
+      }
+    }
+    if(a.witch!==null){
+      const target=state.players.find(p=>p.id===a.witch);
+      if(target && !target.dead){ target.muted=true; messages.push(`🪄 จอมเวทปิดปาก ${target.name}`); }
+    }
+    if(a.seer!==null){
+      const target=state.players.find(p=>p.id===a.seer);
+      if(target){
+        const side=(target.role==="หมาป่า" || target.role==="ลูกหมาป่า")?"🐺 ฝ่ายหมาป่า":"🏠 ฝ่ายชาวบ้าน";
+        messages.push(`🔮 เทพพยากรณ์ตรวจสอบ ${target.name} → ${side}`);
+      }
+    }
+    state.history.push(messages.join("<br>") || "คืนนี้ไม่มีผู้เสียชีวิต");
+  }
+  localStorage.setItem("werewolf-save",JSON.stringify(state));
+  renderGame();
+  alert("💾 บันทึกข้อมูลเรียบร้อยแล้ว");
+}
+</script>
+</body>
+</html>
